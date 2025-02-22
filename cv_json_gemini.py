@@ -147,7 +147,7 @@ async def cv_json(file_path):
                 raise HTTPException(status_code=400, detail="Only PDF and Word documents are allowed")
             
             if file_path.endswith(".doc") or file_path.endswith(".docx"):
-                file_path = convert_docx_to_pdf(file_path)
+                file_path = await convert_docx_to_pdf(file_path)
             
             # Send ALL images in one request (preferred if within token limits)
             response = await  send_gemini_flash_request(file_path, prompt)
