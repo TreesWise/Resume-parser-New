@@ -66,7 +66,7 @@ pypdfium2==4.30.1
 pytesseract==0.3.13
 python-dotenv==1.0.1
 python-multipart==0.0.20
-pywin32==308
+# pywin32==308
 regex==2024.11.6
 requests==2.32.3
 rsa==4.9
