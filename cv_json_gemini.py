@@ -99,21 +99,36 @@ async def cv_json(file_path):
             print(f"API Request Error: {e}")
             return None
 
-    def doc_to_pdf(file_path):
+    async def convert_docx_to_pdf(docx_path):
+        """ Converts DOCX to PDF using LibreOffice (Linux) or Microsoft Word (Windows). """
+        pdf_path = docx_path.replace(".docx", ".pdf")
+    
         try:
-            temp_dir = tempfile.mkdtemp()  # Create a persistent temp directory
-            pdf_file_path = os.path.join(temp_dir, "temp.pdf")
-
-            convert(file_path, pdf_file_path)
-
-            # Debugging - Check if file exists
-            if not os.path.exists(pdf_file_path):
-                raise FileNotFoundError(f"PDF conversion failed, file not found: {pdf_file_path}")
-
-            print(f"PDF successfully created: {pdf_file_path}")  # Confirm PDF creation
-            return pdf_file_path  
+            if platform.system() == "Windows":
+                import win32com.client
+                word = win32com.client.Dispatch("Word.Application")
+                doc = word.Documents.Open(os.path.abspath(docx_path))
+                doc.SaveAs(os.path.abspath(pdf_path), FileFormat=17)  # PDF format
+                doc.Close()
+                word.Quit()
+                print(f" Converted {docx_path} to {pdf_path} using Microsoft Word")
+            else:
+                libreoffice_path = "/usr/bin/libreoffice"
+                if not os.path.exists(libreoffice_path):
+                    raise FileNotFoundError(f"LibreOffice not found at {libreoffice_path}")
+    
+                process = await asyncio.create_subprocess_exec(
+                    libreoffice_path, "--headless", "--convert-to", "pdf",
+                    "--outdir", os.path.dirname(docx_path), docx_path
+                )
+                await process.communicate()  # Ensure subprocess completes
+    
+                print(f" Converted {docx_path} to {pdf_path} using LibreOffice")
+    
+            return pdf_path
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"DOCX to PDF conversion failed: {str(e)}")
+            print(f" DOCX to PDF conversion failed: {e}")
+            raise HTTPException(status_code=500, detail=f"DOCX to PDF conversion failed: {e}")
             
 
     def replace_values(data, mapping):
@@ -132,7 +147,7 @@ async def cv_json(file_path):
                 raise HTTPException(status_code=400, detail="Only PDF and Word documents are allowed")
             
             if file_path.endswith(".doc") or file_path.endswith(".docx"):
-                file_path = doc_to_pdf(file_path)
+                file_path = convert_docx_to_pdf(file_path)
             
             # Send ALL images in one request (preferred if within token limits)
             response = await  send_gemini_flash_request(file_path, prompt)
