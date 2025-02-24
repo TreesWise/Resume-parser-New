@@ -56,6 +56,7 @@ async def cv_json(file_path):
     - If data is missing, return `null` but keep the field in the output.
     4. **Output Formatting:**
     - Generate **only** a properly structured JSON response (no extra text, explanations, or code blocks).
+    - The output JSON structure should be same as the input JSON. All the keys should be same as like the input.
     - The JSON must be **clean, well-formatted, and validated** before returning.
     - Don't output anything other than JSON response and also don't use code block.
     Strictly follow these instructions to ensure 100% accuracy in extraction. Return **only** the structured JSON output.
