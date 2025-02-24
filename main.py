@@ -22,10 +22,10 @@ async def upload_file(file: UploadFile = File(...)):
         extracted_json = await cv_json(file_path)
         print(extracted_json)
 
-        if not extracted_json:
-            raise HTTPException(status_code=500, detail="Failed to extract data. JSON response is empty.")
+        # if not extracted_json:
+        #     raise HTTPException(status_code=500, detail="Failed to extract data. JSON response is empty.")
         
-        print("extracted_json:", extracted_json)
+        # print("extracted_json:", extracted_json)
         json_dict = json.loads(extracted_json)
         return  json_dict
  
