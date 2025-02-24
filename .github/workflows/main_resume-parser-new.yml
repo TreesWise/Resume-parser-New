@@ -68,4 +68,4 @@ jobs:
         with:
           app-name: 'Resume-parser-new'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_85A45383C37D463E9CF1A9CE095F5A32 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5854F6A4E887442C8AD2DBEAFDFFD858 }}
