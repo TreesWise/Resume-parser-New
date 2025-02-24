@@ -6,14 +6,14 @@ import asyncio
 import aiohttp  # Async HTTP for OpenAI API
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
-from openai import OpenAI
+# from openai import OpenAI
 from io import BytesIO
 from dict_file import mapping_dict
 from fastapi import HTTPException
-from spire.doc import *
-from spire.doc.common import *
+# from spire.doc import *
+# from spire.doc.common import *
 # from sample_json import json_template_str
-from docx2pdf import convert
+# from docx2pdf import convert
 # from google import genai
 import re
 import google.generativeai as genai
