@@ -92,8 +92,8 @@ async def cv_json(file_path):
                 formatted_json = json.dumps(extracted_json, indent=4)
                 return formatted_json
                 # print("Valid JSON:", formatted_json)
-                if os.path.exists(pdf_path):
-                    os.remove(pdf_path)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
             except json.JSONDecodeError as e:
                 print("Error parsing JSON:", e)
 
