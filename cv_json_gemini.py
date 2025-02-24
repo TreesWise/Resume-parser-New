@@ -18,6 +18,8 @@ from fastapi import HTTPException
 import re
 import google.generativeai as genai
 import tempfile
+import platform
+import subprocess
 
 load_dotenv()
 
