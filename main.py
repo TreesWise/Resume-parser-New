@@ -23,6 +23,7 @@ async def upload_file(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, buffer)
         
         extracted_json = await cv_json(file_path)
+        print(extracted_json)
 
         if not extracted_json:
             raise HTTPException(status_code=500, detail="Failed to extract data. JSON response is empty.")
