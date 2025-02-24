@@ -102,9 +102,46 @@ async def cv_json(file_path):
             print(f"API Request Error: {e}")
             return None
 
+    # async def convert_docx_to_pdf(docx_path):
+    #     """ Converts DOCX to PDF using LibreOffice (Linux) or Microsoft Word (Windows). """
+    #     pdf_path = docx_path.replace(".docx", ".pdf")
+    
+    #     try:
+    #         if platform.system() == "Windows":
+    #             import win32com.client
+    #             word = win32com.client.Dispatch("Word.Application")
+    #             doc = word.Documents.Open(os.path.abspath(docx_path))
+    #             doc.SaveAs(os.path.abspath(pdf_path), FileFormat=17)  # PDF format
+    #             doc.Close()
+    #             word.Quit()
+    #             print(f" Converted {docx_path} to {pdf_path} using Microsoft Word")
+    #         else:
+    #             libreoffice_path = "/usr/bin/libreoffice"
+    #             if not os.path.exists(libreoffice_path):
+    #                 raise FileNotFoundError(f"LibreOffice not found at {libreoffice_path}")
+    #             # print("docxpath",docx_path)
+                
+    #             process = await asyncio.create_subprocess_exec(
+    #                 libreoffice_path, "--headless", "--convert-to", "pdf",
+    #                 "--outdir", os.path.dirname(docx_path), docx_path
+    #             )
+    #             await process.communicate()  # Ensure subprocess completes
+    
+    #             print(f" Converted {docx_path} to {pdf_path} using LibreOffice")
+    
+    #         return pdf_path
+    #     except Exception as e:
+    #         print(f" DOCX to PDF conversion failed: {e}")
+    #         raise HTTPException(status_code=500, detail=f"DOCX to PDF conversion failed: {e}")
+
+    
     async def convert_docx_to_pdf(docx_path):
         """ Converts DOCX to PDF using LibreOffice (Linux) or Microsoft Word (Windows). """
-        pdf_path = docx_path.replace(".docx", ".pdf")
+    
+        output_dir = "/home/site/wwwroot/uploads"
+        os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+    
+        pdf_path = os.path.join(output_dir, os.path.basename(docx_path).replace(".docx", ".pdf"))
     
         try:
             if platform.system() == "Windows":
@@ -119,11 +156,10 @@ async def cv_json(file_path):
                 libreoffice_path = "/usr/bin/libreoffice"
                 if not os.path.exists(libreoffice_path):
                     raise FileNotFoundError(f"LibreOffice not found at {libreoffice_path}")
-                # print("docxpath",docx_path)
-                
+    
                 process = await asyncio.create_subprocess_exec(
                     libreoffice_path, "--headless", "--convert-to", "pdf",
-                    "--outdir", os.path.dirname(docx_path), docx_path
+                    "--outdir", output_dir, docx_path
                 )
                 await process.communicate()  # Ensure subprocess completes
     
@@ -133,6 +169,7 @@ async def cv_json(file_path):
         except Exception as e:
             print(f" DOCX to PDF conversion failed: {e}")
             raise HTTPException(status_code=500, detail=f"DOCX to PDF conversion failed: {e}")
+
             
 
     def replace_values(data, mapping):
