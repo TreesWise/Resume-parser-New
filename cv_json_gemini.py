@@ -65,7 +65,7 @@ async def cv_json(file_path):
     async def send_gemini_flash_request(file_path, prompt):
         print("Sending Gemini 2.0 Flash API request")
         genai.configure(api_key=os.getenv("api_key"))
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         with open(file_path, "rb") as file:
             document = genai.upload_file(file, display_name="Sample PDF", mime_type="application/pdf")
         try:
