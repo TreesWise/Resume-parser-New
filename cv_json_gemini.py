@@ -116,7 +116,8 @@ async def cv_json(file_path):
                 libreoffice_path = "/usr/bin/libreoffice"
                 if not os.path.exists(libreoffice_path):
                     raise FileNotFoundError(f"LibreOffice not found at {libreoffice_path}")
-                print("docxpath",docx_path)
+                # print("docxpath",docx_path)
+                
                 process = await asyncio.create_subprocess_exec(
                     libreoffice_path, "--headless", "--convert-to", "pdf",
                     "--outdir", os.path.dirname(docx_path), docx_path
