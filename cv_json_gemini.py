@@ -286,7 +286,7 @@ async def cv_json(file_path):
         try:
             # genai.configure(api_key=os.getenv("api_key"))
             # model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content([prompt, document])
+            response = await model.generate_content([prompt, document])
 
             print(response.text)
 
