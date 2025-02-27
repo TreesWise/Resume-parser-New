@@ -9,7 +9,6 @@ mkdir -p $DEST_DIR
 
 # Move all files to /home/app
 cp -r $SOURCE_DIR/* $DEST_DIR/
-
 # Ensure proper ownership and permissions
 sudo chown -R $(whoami):$(whoami) $DEST_DIR
 chmod -R 755 $DEST_DIR
