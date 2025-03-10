@@ -150,7 +150,7 @@ async def cv_json(file_path):
         - If a certificate's NUMBER is **N/A**, do not include that certificate entry in the extracted JSON output; if the NUMBER is missing or empty, it can be included with null as the value.
         - **Certificate Table:**  Ensure that *all* certificates, visas, passports, and flag documents are extracted.  Pay close attention to certificates that might be spread across multiple lines or sections of the resume.  Do not miss any certificates.  If a certificate's details (number, issuing date, place) are missing, use `null` for those fields, but *do not omit the certificate entry itself*.
     3. **Date Format Standardization:**
-    - All date fields (`Dob`, `FromDt`, `ToDt`, `DateOfIssue`, `DateOfExpiry`, etc.) **must strictly follow the format in the sample JSON**: `DD-MM-YYYY`.
+    - All date fields (`Dob`, `FromDt`, `ToDt`, `DateOfIssue`, `DateOfExpiry`, etc.) **must strictly follow this format**: `DD-MM-YYYY`.
     - Ensure no deviations (e.g., `YYYY-MM-DD`, `MM/DD/YYYY`, or `DD/MM/YY` are not allowed).
     - If a date is incomplete (e.g., missing the day or month), return `null` for that field. 
     4. **Ensuring Accuracy & Completeness:**
