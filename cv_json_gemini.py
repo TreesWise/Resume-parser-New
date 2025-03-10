@@ -161,7 +161,7 @@ async def cv_json(file_path):
         - If an entry in a table spans multiple lines, merge those lines to create a complete entry.
         - Ensure `TEU` (container capacity) is numerical and `IMO` is a 7-digit number. If missing, set to `null`.
         - Ensure `Flag` values are valid country names (e.g., "Panama"), otherwise set to `null`.
-        - Make sure that the `RANK` fields are extracted properly and mapped to the `Position` field as shown in the sample JSON. 
+        - **Important:** Every experience entry must have a `"Position"` field. If a rank is missing, return `"Position": null`, but do not omit the key.
         ### **Important:** Ensure **every experience entry** is captured fully and no entries are omitted. Return **only** the structured JSON output.
     - **Certificate Table:**
         - Extract **all** certificates, **visas**, **passports**, and **flag documents**, even if scattered or multi-line.
