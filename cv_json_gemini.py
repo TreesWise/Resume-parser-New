@@ -15,6 +15,7 @@ import tempfile
 import platform
 import subprocess
 from docx2pdf import convert
+from rank_map_dict import rank_mapping
 
 load_dotenv()
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -90,6 +91,15 @@ def replace_values(data, mapping):
         return mapping.get(data, data)  # Replace if found, else keep original
     return data
 
+def replace_rank(json_data, rank_mapping):
+    if isinstance(json_data, dict):
+        return {key: replace_values(value, rank_mapping) for key, value in json_data.items()}  # Only replace values, not keys
+    elif isinstance(json_data, list):
+        return [replace_values(item, rank_mapping) for item in json_data]
+    elif isinstance(json_data, str):
+        return rank_mapping.get(json_data, json_data)  # Replace value if found in mapping
+    return json_data
+
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 async def process_images(file_path, prompt):
@@ -105,8 +115,9 @@ async def process_images(file_path, prompt):
         response_output = await  send_gemini_flash_request(file_path, prompt)
         print("send_gemini_flash_request response", response_output)
         updated_json = replace_values(response_output, mapping_dict)
+        rank_mapped = replace_rank(updated_json, rank_mapping)
         # print("updatedjson",updated_json)
-        return updated_json
+        return rank_mapped
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -138,12 +149,16 @@ async def cv_json(file_path):
         - Include documents like **National Documents** (e.g., "SEAFARER’S ID", "TRAVELLING PASSPORT "), **LICENCE** (e.g., "National License (COC)", "GMDSS "), **FLAG DOCUMENTS** (e.g., "Liberian"), **MEDICAL DOCUMENTS** (e.g., "Yellow Fever") in this section. Don't omit any of these documents.
         - If a certificate's NUMBER is **N/A**, do not include that certificate entry in the extracted JSON output; if the NUMBER is missing or empty, it can be included with null as the value.
         - **Certificate Table:**  Ensure that *all* certificates, visas, passports, and flag documents are extracted.  Pay close attention to certificates that might be spread across multiple lines or sections of the resume.  Do not miss any certificates.  If a certificate's details (number, issuing date, place) are missing, use `null` for those fields, but *do not omit the certificate entry itself*.
-    3. **Ensuring Accuracy & Completeness:**
+    3. **Date Format Standardization:**
+    - All date fields (`Dob`, `FromDt`, `ToDt`, `DateOfIssue`, `DateOfExpiry`, etc.) **must strictly follow the format in the sample JSON**: `DD-MM-YYYY`.
+    - Ensure no deviations (e.g., `YYYY-MM-DD`, `MM/DD/YYYY`, or `DD/MM/YY` are not allowed).
+    - If a date is incomplete (e.g., missing the day or month), return `null` for that field. 
+    4. **Ensuring Accuracy & Completeness:**
     - Scan the entire resume to ensure **no omissions** in `certificate_table`.
     - Maintain original sequence—do not alter entry order.
     - Do **not** include irrelevant text, extra fields, or unrelated details.
     - If data is missing, return `null` but keep the field in the output.
-    4. **Output Formatting:**
+    5. **Output Formatting:**
     - **Return only a clean JSON object** with no extra text, explanations, code blocks, or Markdown formatting.
     - **Do not use code block syntax (```json ... ```) around the response.**
     - **Do not add extra indentation, explanations, or formatting.** Return the raw JSON directly.
