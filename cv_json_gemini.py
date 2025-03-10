@@ -102,23 +102,18 @@ def replace_values(data, mapping):
 
 
 def replace_rank(json_data, rank_mapping):
-# Convert rank_mapping keys to lowercase for case-insensitive replacement
-    rank_mapping = {key.lower(): value for key, value in rank_mapping.items()}
+        # Convert rank_mapping keys to lowercase for case-insensitive replacement
+        rank_mapping = {key.lower(): value for key, value in rank_mapping.items()}
 
-    if isinstance(json_data, dict):
-        return {
-            key.lower(): replace_rank(
-                value.lower() if key.lower() == "position" and isinstance(value, str) else value, 
-                rank_mapping
-            ) 
-            for key, value in json_data.items()
-        }
-    elif isinstance(json_data, list):
-        return [replace_rank(item, rank_mapping) for item in json_data]
-    elif isinstance(json_data, str):
-        lower_value = json_data.lower()  # Convert value to lowercase before checking
-        return rank_mapping.get(lower_value, lower_value)  # Replace if found
-    return json_data
+        if isinstance(json_data, dict):
+            return {
+                key: replace_rank(value, rank_mapping) if key != "2" else  # "2" corresponds to "Position"
+                rank_mapping.get(value.lower(), value) if isinstance(value, str) else value
+                for key, value in json_data.items()
+            }
+        elif isinstance(json_data, list):
+            return [replace_rank(item, rank_mapping) for item in json_data]
+        return json_data
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -170,10 +165,19 @@ async def cv_json(file_path):
         - Include documents like **National Documents** (e.g., "SEAFARER’S ID", "TRAVELLING PASSPORT "), **LICENCE** (e.g., "National License (COC)", "GMDSS "), **FLAG DOCUMENTS** (e.g., "Liberian"), **MEDICAL DOCUMENTS** (e.g., "Yellow Fever") in this section. Don't omit any of these documents.
         - If a certificate's NUMBER is **N/A**, do not include that certificate entry in the extracted JSON output; if the NUMBER is missing or empty, it can be included with null as the value.
         - **Certificate Table:**  Ensure that *all* certificates, visas, passports, and flag documents are extracted.  Pay close attention to certificates that might be spread across multiple lines or sections of the resume.  Do not miss any certificates.  If a certificate's details (number, issuing date, place) are missing, use `null` for those fields, but *do not omit the certificate entry itself*.
+        - **Certificate Place & Country Extraction Rules:**
+            - If the `PlaceOfIssue` contains both a **city and a country** (e.g., "Kochi, India"), split them correctly:
+              - The city ("Kochi") should go under `"PlaceOfIssue"`.
+              - The country ("India") should go under `"CountryOfIssue"`.
+            - If **only one location is mentioned**, determine if it is a **city** or a **country**:
+              - If it is a **recognized city**, it should go under `"PlaceOfIssue"`.
+              - If it is a **recognized country**, it should go under `"CountryOfIssue"`.
+            - If `"CountryOfIssue"` is missing but `"PlaceOfIssue"` contains a **comma-separated value**, assume the last part is the country.
+            - Ensure that `"PlaceOfIssue"` and `"CountryOfIssue"` are never combined in a single field.
     3. **Date Format Standardization:**
-    - All date fields (`Dob`, `FromDt`, `ToDt`, `DateOfIssue`, `DateOfExpiry`, etc.) **must strictly follow this format**: `DD-MM-YYYY`.
+    - All date fields (`Dob`, `FromDt`, `ToDt`, `DateOfIssue`, `DateOfExpiry`, etc.) **must strictly follow the format in the sample JSON**: `DD-MM-YYYY`.
     - Ensure no deviations (e.g., `YYYY-MM-DD`, `MM/DD/YYYY`, or `DD/MM/YY` are not allowed).
-    - If a date is incomplete (e.g., missing the day or month), return `null` for that field. 
+    - If a date is incomplete (e.g., missing the day or month), return `null` for that field.
     4. **Ensuring Accuracy & Completeness:**
     - Scan the entire resume to ensure **no omissions** in `certificate_table`.
     - Maintain original sequence—do not alter entry order.
@@ -185,7 +189,7 @@ async def cv_json(file_path):
     - **Do not add extra indentation, explanations, or formatting.** Return the raw JSON directly.
     - **The JSON output should start with `{' and end with '}` and should be valid JSON syntax.**
     Strictly follow these instructions to ensure 100% accuracy in extraction. Return **only** the structured JSON output without any Markdown formatting.
-    """  
+    """
 
     print("gemini")
     return await  process_images(file_path, prompt)
