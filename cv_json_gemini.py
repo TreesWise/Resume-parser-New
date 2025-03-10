@@ -91,13 +91,33 @@ def replace_values(data, mapping):
         return mapping.get(data, data)  # Replace if found, else keep original
     return data
 
+# def replace_rank(json_data, rank_mapping):
+#     if isinstance(json_data, dict):
+#         return {key: replace_values(value, rank_mapping) for key, value in json_data.items()}  # Only replace values, not keys
+#     elif isinstance(json_data, list):
+#         return [replace_values(item, rank_mapping) for item in json_data]
+#     elif isinstance(json_data, str):
+#         return rank_mapping.get(json_data, json_data)  # Replace value if found in mapping
+#     return json_data
+
+
 def replace_rank(json_data, rank_mapping):
+# Convert rank_mapping keys to lowercase for case-insensitive replacement
+    rank_mapping = {key.lower(): value for key, value in rank_mapping.items()}
+
     if isinstance(json_data, dict):
-        return {key: replace_values(value, rank_mapping) for key, value in json_data.items()}  # Only replace values, not keys
+        return {
+            key.lower(): replace_rank(
+                value.lower() if key.lower() == "position" and isinstance(value, str) else value, 
+                rank_mapping
+            ) 
+            for key, value in json_data.items()
+        }
     elif isinstance(json_data, list):
-        return [replace_values(item, rank_mapping) for item in json_data]
+        return [replace_rank(item, rank_mapping) for item in json_data]
     elif isinstance(json_data, str):
-        return rank_mapping.get(json_data, json_data)  # Replace value if found in mapping
+        lower_value = json_data.lower()  # Convert value to lowercase before checking
+        return rank_mapping.get(lower_value, lower_value)  # Replace if found
     return json_data
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
