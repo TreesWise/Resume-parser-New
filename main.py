@@ -1269,7 +1269,7 @@ def export_data_to_excel():
                 """))
                 print("[TASK] Updated rows to 'exported'", flush=True)
                 # conn2.execute(text("DELETE FROM temp_table WHERE TRIM(status) = 'exported' AND DATE(CreatedDate) < DATE('now')"))
-                conn2.execute(text("DELETE FROM temp_table WHERE TRIM(status) = 'exported')
+                conn2.execute(text("DELETE FROM temp_table WHERE TRIM(status) = 'exported'")
                 print("[TASK] Deleted exported rows", flush=True)
 
     except Exception as e:
@@ -1423,8 +1423,8 @@ def start_scheduler_guarded():
             scheduler.add_job(
                 run_both_tasks,
                 CronTrigger(
-                    hour=16,             # Current hour
-                    minute=55,           # Current minute
+                    hour=17,             # Current hour
+                    minute=10,           # Current minute
                     timezone=SCHED_TZ    # Correct timezone (Asia/Kolkata)
                 ),
                 id="run_both_tasks_now",   # Change the ID to reflect immediate execution
@@ -1456,6 +1456,7 @@ async def shutdown_scheduler():
         print("[SCHEDULER] APScheduler stopped", flush=True)
     except Exception:
         pass
+
 
 
 
