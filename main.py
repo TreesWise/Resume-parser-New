@@ -1411,8 +1411,8 @@ def start_scheduler_guarded():
             scheduler.add_job(
                 run_both_tasks,
                 CronTrigger(
-                    hour=11,             # Current hour
-                    minute=35,           # Current minute
+                    hour=15,             # Current hour
+                    minute=15,           # Current minute
                     timezone=SCHED_TZ    # Correct timezone (Asia/Kolkata)
                 ),
                 id="run_both_tasks_now",   # Change the ID to reflect immediate execution
@@ -1444,3 +1444,4 @@ async def shutdown_scheduler():
         print("[SCHEDULER] APScheduler stopped", flush=True)
     except Exception:
         pass
+
