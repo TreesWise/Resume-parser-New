@@ -905,7 +905,9 @@ import ast
 # ------------------------------------------------------------------------------
 # PERSISTENT, ABSOLUTE DB PATH (works in Azure and locally)
 # ------------------------------------------------------------------------------
-APP_HOME = os.environ.get("HOME", r"C:\Users\anusree.padmanabhan")  # '/home' is the writable mount on Linux App Service
+# APP_HOME = os.environ.get("HOME", r"C:\Users\anusree.padmanabhan")  # '/home' is the writable mount on Linux App Service
+
+APP_HOME = os.environ.get("HOME", "/home")
 DB_DIR = os.path.join(APP_HOME, "data")
 os.makedirs(DB_DIR, exist_ok=True)
 
@@ -1411,8 +1413,8 @@ def start_scheduler_guarded():
             scheduler.add_job(
                 run_both_tasks,
                 CronTrigger(
-                    hour=15,             # Current hour
-                    minute=45,           # Current minute
+                    hour=16,             # Current hour
+                    minute=10,           # Current minute
                     timezone=SCHED_TZ    # Correct timezone (Asia/Kolkata)
                 ),
                 id="run_both_tasks_now",   # Change the ID to reflect immediate execution
@@ -1444,5 +1446,6 @@ async def shutdown_scheduler():
         print("[SCHEDULER] APScheduler stopped", flush=True)
     except Exception:
         pass
+
 
 
