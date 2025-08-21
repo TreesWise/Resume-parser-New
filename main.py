@@ -1292,9 +1292,13 @@ def export_data_to_excel():
         engine = get_db_engine()
         with engine.begin() as conn:
             print("[TASK] Querying pending rows from temp_table...", flush=True)
+            # result = conn.execute(text("""
+            #     SELECT * FROM temp_table
+            #     WHERE TRIM(status) = 'pending' AND DATE(CreatedDate) < DATE('now')
+            # """))
             result = conn.execute(text("""
                 SELECT * FROM temp_table
-                WHERE TRIM(status) = 'pending' AND DATE(CreatedDate) < DATE('now')
+                WHERE TRIM(status) = 'pending'
             """))
             data = result.fetchall()
             print(f"[TASK] Fetched {len(data)} rows", flush=True)
@@ -1327,13 +1331,19 @@ def export_data_to_excel():
             print(f"[TASK] Uploaded Excel to blob: {blob_name}", flush=True)
 
             with engine.begin() as conn2:
+                # conn2.execute(text("""
+                #     UPDATE temp_table
+                #     SET status='exported'
+                #     WHERE TRIM(status) = 'pending' AND DATE(CreatedDate) < DATE('now') 
+                # """))
                 conn2.execute(text("""
                     UPDATE temp_table
                     SET status='exported'
-                    WHERE TRIM(status) = 'pending' AND DATE(CreatedDate) < DATE('now') 
+                    WHERE TRIM(status) = 'pending'
                 """))
                 print("[TASK] Updated rows to 'exported'", flush=True)
-                conn2.execute(text("DELETE FROM temp_table WHERE TRIM(status) = 'exported' AND DATE(CreatedDate) < DATE('now')"))
+                # conn2.execute(text("DELETE FROM temp_table WHERE TRIM(status) = 'exported' AND DATE(CreatedDate) < DATE('now')"))
+                conn2.execute(text("DELETE FROM temp_table WHERE TRIM(status) = 'exported'"))
                 print("[TASK] Deleted exported rows", flush=True)
 
     except Exception as e:
@@ -1487,8 +1497,8 @@ def start_scheduler_guarded():
             scheduler.add_job(
                 run_both_tasks,
                 CronTrigger(
-                    hour=14,             # Current hour
-                    minute=50,           # Current minute
+                    hour=15,             # Current hour
+                    minute=15,           # Current minute
                     timezone=SCHED_TZ    # Correct timezone (Asia/Kolkata)
                 ),
                 id="run_both_tasks_now",   # Change the ID to reflect immediate execution
@@ -1520,3 +1530,4 @@ async def shutdown_scheduler():
         print("[SCHEDULER] APScheduler stopped", flush=True)
     except Exception:
         pass
+
