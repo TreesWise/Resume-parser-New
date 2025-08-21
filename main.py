@@ -51,6 +51,14 @@ key = os.getenv("key")
 model_id = os.getenv("model_id")
 container_name = os.getenv("container_name")
 connection_string = os.getenv("connection_string")
+
+
+AZURE_CONNECTION_STRING=os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+AZURE_CONTAINER_NAME= os.getenv("AZURE_BLOB_CONTAINER_NAME")
+
+
+
+
  
 basic_details_order = [
     "Name", "FirstName", "MiddleName", "LastName", "Nationality", "Gender",
@@ -355,7 +363,11 @@ async def upload_file(
  
  
  
-        course_map = replace_values(final_output, mapping_dict)
+        # course_map = replace_values(final_output, mapping_dict)
+
+        current_mapping_dict = load_mapping_dict_from_blob()   # NEW
+        course_map = replace_values(final_output, current_mapping_dict)
+
         rank_map = replace_rank(course_map, rank_mapping)
         rank_map=replace_country(rank_map,country_mapping)
         final_output['data']['basic_details'] = replace_country(rank_map['data']['basic_details'], country_mapping)
@@ -451,11 +463,20 @@ async def upload_file(api_key: str = Depends(verify_api_key), file: UploadFile =
             #     result = json.loads(result)
  
             # Normalize and flatten the mapping dictionary
+            # normalized_mapping = {}
+            # for key, value in mapping_dict.items():
+            #     aliases = [alias.strip().lower() for alias in key.split("/")]
+            #     for alias in aliases:
+            #         normalized_mapping[alias] = value
+
+            # Load fresh mapping from Blob and normalize/flatten
+            mapping_dict_from_blob = load_mapping_dict_from_blob()   # NEW
             normalized_mapping = {}
-            for key, value in mapping_dict.items():
+            for key, value in mapping_dict_from_blob.items():
                 aliases = [alias.strip().lower() for alias in key.split("/")]
                 for alias in aliases:
                     normalized_mapping[alias] = value
+
  
             # Perform docName mapping
             for item in result:
@@ -901,13 +922,64 @@ async def upload_file(api_key: str = Depends(verify_api_key), file: UploadFile =
 
 
 
+
+
 import ast
+
+
+# ------------ Mapping dict loader (from Azure Blob) ------------
+MAPPING_BLOB_NAME = "dict_file.py"
+
+# Simple in-process cache to avoid re-downloading each request
+_mapping_cache = {"etag": None, "data": {}}
+
+def _parse_mapping_dict_py(file_text: str) -> dict:
+    """
+    Expects a Python file that contains:
+        mapping_dict = { ... }
+    Returns the dict safely using ast.literal_eval.
+    """
+    m = re.search(r"mapping_dict\s*=\s*(\{.*\})\s*\Z", file_text, flags=re.DOTALL)
+    if not m:
+        # Fallback: split once
+        parts = file_text.split("=", 1)
+        if len(parts) == 2:
+            return ast.literal_eval(parts[1].strip())
+        return {}
+    return ast.literal_eval(m.group(1))
+
+def load_mapping_dict_from_blob(force: bool = False) -> dict:
+    """
+    Download dict_file.py from Azure Blob and return the mapping dict.
+    Uses an ETag-based cache to avoid unnecessary downloads.
+    """
+    try:
+        blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+        blob_client = blob_service_client.get_blob_client(container=AZURE_CONTAINER_NAME, blob=MAPPING_BLOB_NAME)
+
+        props = blob_client.get_blob_properties()
+        if (not force) and _mapping_cache["etag"] == props.etag and _mapping_cache["data"]:
+            return _mapping_cache["data"]
+
+        content_bytes = blob_client.download_blob().readall()
+        content_text = content_bytes.decode("utf-8", errors="replace")
+        data = _parse_mapping_dict_py(content_text)
+
+        _mapping_cache["etag"] = props.etag
+        _mapping_cache["data"] = data
+        return data
+    except Exception as e:
+        # Graceful fallback: keep last good cache if present
+        if _mapping_cache["data"]:
+            return _mapping_cache["data"]
+        print(f"[WARN] load_mapping_dict_from_blob failed: {e}. Using empty mapping.", flush=True)
+        return {}
+# ---------------------------------------------------------------
+
 # ------------------------------------------------------------------------------
 # PERSISTENT, ABSOLUTE DB PATH (works in Azure and locally)
 # ------------------------------------------------------------------------------
-# APP_HOME = os.environ.get("HOME", r"C:\Users\anusree.padmanabhan")  # '/home' is the writable mount on Linux App Service
-
-APP_HOME = os.environ.get("HOME", "/home")
+APP_HOME = os.environ.get("HOME","/home")  # '/home' is the writable mount on Linux App Service
 DB_DIR = os.path.join(APP_HOME, "data")
 os.makedirs(DB_DIR, exist_ok=True)
 
@@ -1060,8 +1132,8 @@ def fetch_mapped_documents():
 def download_dict_file_from_blob(container_name, blob_name, download_path):
     try:
         # Get the Azure Blob Service Client
-        connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+        # connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+        blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
 
         # Get the container client
         container_client = blob_service_client.get_container_client(container_name)
@@ -1080,6 +1152,8 @@ def download_dict_file_from_blob(container_name, blob_name, download_path):
 
 
 
+
+
 import ast
 
 # Function to escape newlines, quotes, and special characters properly
@@ -1089,8 +1163,8 @@ def escape_value(value):
     return value
 
 def update_mapping_dict():
-    conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-    container = os.getenv("AZURE_BLOB_CONTAINER_NAME")
+    # conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    # container = os.getenv("AZURE_BLOB_CONTAINER_NAME")
     # Fetch new data from the database (MasterDocument table)
     rows = fetch_mapped_documents()
 
@@ -1099,7 +1173,7 @@ def update_mapping_dict():
 
     try:
         # Step 1: Download the current dict_file.py from Blob storage
-        download_dict_file_from_blob(container, 'dict_file.py', 'dict_file_local.py')
+        download_dict_file_from_blob(AZURE_CONTAINER_NAME, 'dict_file.py', 'dict_file_local.py')
         
         # Step 2: Load the downloaded dict file locally
         with open('dict_file_local.py', 'r', encoding='utf-8') as f:
@@ -1128,7 +1202,7 @@ def update_mapping_dict():
         f.write("}\n")
 
     # Step 5: Upload the updated dict_file.py back to Blob storage
-    upload_dict_file_to_blob('dict_file_updated.py', container, 'dict_file.py')
+    upload_dict_file_to_blob('dict_file_updated.py', AZURE_CONTAINER_NAME, 'dict_file.py')
 
     print("[INFO] dict_file.py updated and uploaded to Blob storage.")
 
@@ -1138,8 +1212,8 @@ def update_mapping_dict():
 def upload_dict_file_to_blob(file_path, container_name, blob_name):
     try:
         # Get the Azure Blob Service Client
-        connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+        # connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+        blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
 
         # Get the container client
         container_client = blob_service_client.get_container_client(container_name)
@@ -1218,14 +1292,10 @@ def export_data_to_excel():
         engine = get_db_engine()
         with engine.begin() as conn:
             print("[TASK] Querying pending rows from temp_table...", flush=True)
-            # result = conn.execute(text("""
-            #     SELECT * FROM temp_table
-            #     WHERE TRIM(status) = 'pending' AND DATE(CreatedDate) < DATE('now')
-            # """))
             result = conn.execute(text("""
-                  SELECT * FROM temp_table
-                  WHERE TRIM(status) = 'pending'
-              """))
+                SELECT * FROM temp_table
+                WHERE TRIM(status) = 'pending' AND DATE(CreatedDate) < DATE('now')
+            """))
             data = result.fetchall()
             print(f"[TASK] Fetched {len(data)} rows", flush=True)
             if not data:
@@ -1240,36 +1310,30 @@ def export_data_to_excel():
             excel_buffer.seek(0)
             print("[TASK] Exported data to Excel (in-memory)", flush=True)
 
-            conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-            container_name = os.getenv("AZURE_BLOB_CONTAINER_NAME")
-            blob_service_client = BlobServiceClient.from_connection_string(conn_str)
+            # conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+            # container_name = os.getenv("AZURE_BLOB_CONTAINER_NAME")
+            blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
 
-            container_client = blob_service_client.get_container_client(container_name)
+            container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
             try:
                 container_client.create_container()
-                print(f"[BLOB] Created container '{container_name}'", flush=True)
+                print(f"[BLOB] Created container '{AZURE_CONTAINER_NAME}'", flush=True)
             except ResourceExistsError:
                 pass
 
             blob_name = f"verification_documents_exported_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-            blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+            blob_client = blob_service_client.get_blob_client(container=AZURE_CONTAINER_NAME, blob=blob_name)
             blob_client.upload_blob(excel_buffer, overwrite=True)
             print(f"[TASK] Uploaded Excel to blob: {blob_name}", flush=True)
 
             with engine.begin() as conn2:
-                # conn2.execute(text("""
-                #     UPDATE temp_table
-                #     SET status='exported'
-                #     WHERE TRIM(status) = 'pending' AND DATE(CreatedDate) < DATE('now') 
-                # """))
                 conn2.execute(text("""
                     UPDATE temp_table
                     SET status='exported'
-                    WHERE TRIM(status) = 'pending' 
+                    WHERE TRIM(status) = 'pending' AND DATE(CreatedDate) < DATE('now') 
                 """))
                 print("[TASK] Updated rows to 'exported'", flush=True)
-                # conn2.execute(text("DELETE FROM temp_table WHERE TRIM(status) = 'exported' AND DATE(CreatedDate) < DATE('now')"))
-                conn2.execute(text("DELETE FROM temp_table WHERE TRIM(status) = 'exported'"))
+                conn2.execute(text("DELETE FROM temp_table WHERE TRIM(status) = 'exported' AND DATE(CreatedDate) < DATE('now')"))
                 print("[TASK] Deleted exported rows", flush=True)
 
     except Exception as e:
@@ -1283,10 +1347,10 @@ def export_data_to_excel():
 def get_latest_replied_blob_name():
     print("[TASK] get_latest_replied_blob_name START", flush=True)
     try:
-        conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-        container = os.getenv("AZURE_BLOB_CONTAINER_NAME")
-        blob_service_client = BlobServiceClient.from_connection_string(conn_str)
-        container_client = blob_service_client.get_container_client(container)
+        # conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+        # container = os.getenv("AZURE_BLOB_CONTAINER_NAME")
+        blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+        container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
 
         blobs = list(container_client.list_blobs(name_starts_with="verification_documents_replied_"))
         replied_blobs = sorted(
@@ -1310,11 +1374,11 @@ def get_latest_replied_blob_name():
 def insert_data_from_blob(blob_name: str):
     print(f"[TASK] insert_data_from_blob START ({blob_name})", flush=True)
     try:
-        conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-        container = os.getenv("AZURE_BLOB_CONTAINER_NAME")
-        blob_service_client = BlobServiceClient.from_connection_string(conn_str)
+        # conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+        # container = os.getenv("AZURE_BLOB_CONTAINER_NAME")
+        blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
 
-        blob_data = blob_service_client.get_blob_client(container=container, blob=blob_name)\
+        blob_data = blob_service_client.get_blob_client(container=AZURE_CONTAINER_NAME, blob=blob_name)\
             .download_blob().readall()
         df = pd.read_excel(io.BytesIO(blob_data))
         print(f"[TASK] Read {len(df)} rows from replied Excel; columns={list(df.columns)}", flush=True)
@@ -1423,8 +1487,8 @@ def start_scheduler_guarded():
             scheduler.add_job(
                 run_both_tasks,
                 CronTrigger(
-                    hour=17,             # Current hour
-                    minute=30,           # Current minute
+                    hour=14,             # Current hour
+                    minute=50,           # Current minute
                     timezone=SCHED_TZ    # Correct timezone (Asia/Kolkata)
                 ),
                 id="run_both_tasks_now",   # Change the ID to reflect immediate execution
@@ -1456,10 +1520,3 @@ async def shutdown_scheduler():
         print("[SCHEDULER] APScheduler stopped", flush=True)
     except Exception:
         pass
-
-
-
-
-
-
-
